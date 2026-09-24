@@ -44,16 +44,21 @@
       margin: 0 0 2rem;
     }
     nav a {
-      display: block;
-      text-align: center;
-      padding: 0.55rem 0.4rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 3.1rem;
+      padding: 0.45rem 0.4rem;
       border: 1px solid var(--rule);
-      color: var(--muted);
+      color: var(--link);
+      text-align: center;
       text-decoration: none;
       font-family: system-ui, sans-serif;
       font-size: 0.85rem;
     }
     nav a[aria-disabled="true"] {
+      color: var(--muted);
       pointer-events: none;
       cursor: default;
     }
@@ -100,7 +105,7 @@
       On the human-recorded HumDial-FDBench, it attains the highest Final score (72.9) of the compared duplex models.
     </p>
 
-    <p class="status">The paper PDF and audio demos will be linked after release. The arXiv identifier and appendix PDF are placeholders and will be updated in place. This site is a convenience landing page; the arXiv extended version is the archival source of the Online Appendix.</p>
+    <p class="status">This site is a convenience landing page; the arXiv extended version is the archival source of the Online Appendix.</p>
   </main>
 </body>
 </html>
