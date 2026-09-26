@@ -7,7 +7,7 @@ Project page for **AdaptDuplex: From Static to Adaptive Full-Duplex Spoken Dialo
 
 This repository hosts the public landing page.
 
-- arXiv: https://arxiv.org/abs/0000.00000
+- arXiv: https://arxiv.org/abs/2609.29217
 - Online Appendix: https://adaptduplex.github.io/appendix
 
 Do not treat this site as the archival source of the paper; the arXiv extended version remains the authority for the appendix.
