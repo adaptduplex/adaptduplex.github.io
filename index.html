@@ -84,7 +84,7 @@
   <main>
     <h1>AdaptDuplex: From Static to Adaptive Full-Duplex Spoken Dialogue</h1>
     <p class="authors">Zhiyang Zhou, Yingxin Shang, Zhou Wang, Hongwei Cai, Weixu Wang, Shuran Zhou<sup>*</sup>, Shuofeng Zhao, Wenke Fan, Qingxiang Guo, Dawei Yang, Lin Yang, Yang Song</p>
-    <p class="affil">Zuoyebang Education Technology<br><sup>*</sup>Corresponding author</p>
+    <p class="affil">Zuoyebang Education Technology (Beijing) Co., Ltd.<br><sup>*</sup>Corresponding author</p>
 
     <nav aria-label="Paper materials">
       <a href="#" aria-disabled="true">Paper<small>Coming soon</small></a>
@@ -97,12 +97,12 @@
     <p>
       Full-duplex spoken dialogue requires simultaneous listening and speaking at sub-second latency, under conversational timing and cognitive demands that change moment to moment.
       Yet current models mostly impose static operating points, lacking a systematic mechanism for adaptive decisions.
-      We present AdaptDuplex, which upgrades Qwen3-Omni with such a mechanism, co-designed across three layers.
+      We present AdaptDuplex, which extends Qwen3-Omni with such a mechanism, co-designed across three layers.
       A compact token-level protocol represents every window as a canonical sequence, trains dual-stream alignment through a bounded text lead over speech, and exposes every behavioral decision as an explicit token for training-free runtime control via logits bias.
       Adaptive mechanisms dynamically predict among discrete window durations and augment direct response as needed with non-blocking cognitive consolidation and multi-flight external reasoning.
-      A progressive pipeline introduces these behaviors through a three-stage Thinker curriculum, then Talker-only and joint SFT, with GRPO as a further increment.
-      On Full-Duplex-Bench v1 and v1.5, AdaptDuplex outperforms DuplexOmni and MiniCPM-o 4.5 on the majority of comparable turn-taking, overlap-behavior, and timing metrics, with gains in both interaction decisions and response timing.
-      On the human-recorded HumDial-FDBench, it attains the highest Final score (72.9) of the compared duplex models.
+      A progressive pipeline introduces these behaviors through a three-stage Thinker curriculum, then Talker-only and joint SFT, with GRPO as a preliminary increment.
+      On Full-Duplex-Bench v1 and v1.5, AdaptDuplex outperforms DuplexOmni on 18 of 21 comparable turn-taking, overlap-behavior, and timing metrics and MiniCPM-o 4.5 on 19 of 22, with gains in both interaction decisions and response timing.
+      On human-recorded HumDial-FDBench, it attains the top Final score (72.9) of the compared duplex models.
     </p>
 
     <p class="status">This site is a convenience landing page; the arXiv extended version is the archival source of the Online Appendix.</p>
