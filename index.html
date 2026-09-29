@@ -1,110 +1,673 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AdaptDuplex: From Static to Adaptive Full-Duplex Spoken Dialogue</title>
-  <style>
-    :root {
-      --text: #1a1a1a;
-      --muted: #555;
-      --rule: #ddd;
-      --link: #0b57d0;
-      --bg: #fff;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font: 16px/1.55 "Source Serif 4", "Times New Roman", Times, serif;
-    }
-    main {
-      max-width: 42rem;
-      margin: 0 auto;
-      padding: 3rem 1.25rem 4rem;
-    }
-    h1 {
-      font-size: 1.65rem;
-      font-weight: 650;
-      line-height: 1.25;
-      margin: 0 0 1rem;
-      letter-spacing: -0.01em;
-    }
-    .authors, .affil, .status {
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-    .authors { margin: 0 0 0.35rem; }
-    .affil { margin: 0 0 1.5rem; }
-    nav {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 0.5rem;
-      margin: 0 0 2rem;
-    }
-    nav a {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 3.1rem;
-      padding: 0.45rem 0.4rem;
-      border: 1px solid var(--rule);
-      color: var(--link);
-      text-align: center;
-      text-decoration: none;
-      font-family: system-ui, sans-serif;
-      font-size: 0.85rem;
-    }
-    nav a[aria-disabled="true"] {
-      color: var(--muted);
-      pointer-events: none;
-      cursor: default;
-    }
-    nav a small {
-      display: block;
-      margin-top: 0.15rem;
-      font-size: 0.7rem;
-      letter-spacing: 0.02em;
-      text-transform: uppercase;
-    }
-    h2 {
-      font-size: 1.1rem;
-      margin: 0 0 0.6rem;
-    }
-    p { margin: 0 0 1rem; }
-    .status { margin-top: 2rem; font-size: 0.85rem; }
-    @media (max-width: 640px) {
-      nav { grid-template-columns: 1fr 1fr; }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AdaptDuplex: From Static to Adaptive Full-Duplex Spoken Dialogue</title>
+<meta name="description" content="AdaptDuplex extends Qwen3-Omni with a compact token protocol, adaptive windows and non-blocking reasoning actions, and a progressive training pipeline for full-duplex spoken dialogue.">
+<meta property="og:title" content="AdaptDuplex: From Static to Adaptive Full-Duplex Spoken Dialogue">
+<meta property="og:description" content="One token protocol for adaptive windows, dual-stream alignment, and tiered reasoning in full-duplex spoken dialogue.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='3' y='8' width='26' height='6' rx='2' fill='%234C72B0'/><rect x='3' y='18' width='16' height='6' rx='2' fill='%23B79A3C'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F5F6F8; --surface:#FFFFFF; --ink:#1C2638; --muted:#566074; --faint:#8A93A3; --rule:#DADFE6;
+  --control:#3E3A6E; --control-bg:#E4E3EE;
+  --audio:#4C72B0; --audio-bg:#E6EBF4;
+  --video:#55A868; --video-bg:#E4F1E7;
+  --text:#22706F; --text-line:#2E8B8B; --text-bg:#E2EFEF;
+  --window:#8A45A6; --window-line:#A85CC4; --window-bg:#F5EBF8;
+  --action:#B35F2E; --action-line:#DD8452; --action-bg:#F8E7DC;
+  --eos:#B0444A; --eos-line:#C44E52; --eos-bg:#F6E3E3;
+  --codec:#83691E; --codec-line:#B79A3C; --codec-bg:#EFE9D4;
+  --boundary:#6E6E6E; --boundary-bg:#E6E6E6;
+  --sans:"Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --serif:"Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:18px;line-height:1.65;-webkit-font-smoothing:antialiased}
+a{color:var(--control);text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--control);outline-offset:3px;border-radius:3px}
+img{max-width:100%}
+.wrap{width:min(1160px,calc(100% - 48px));margin:0 auto}
+.narrow{max-width:68ch}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:20;background:rgba(245,246,248,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+.topbar .wrap{display:flex;align-items:center;justify-content:space-between;height:56px;font-family:var(--sans)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1rem;color:var(--ink);text-decoration:none;letter-spacing:-.01em}
+.brand svg{display:block}
+.topnav{display:flex;gap:22px;font-size:.9rem}
+.topnav a{color:var(--muted);text-decoration:none}
+.topnav a:hover{color:var(--ink)}
+
+/* hero */
+.hero{padding:clamp(48px,8vw,96px) 0 36px}
+.hero h1{margin:0;font-family:var(--sans);font-weight:800;font-size:clamp(3.2rem,10vw,7.6rem);line-height:.92;letter-spacing:-.045em}
+.hero .sub{margin:.35em 0 0;font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(1.35rem,2.9vw,2.1rem);line-height:1.2;color:var(--muted);max-width:30ch}
+.byline{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px 48px;align-items:end;margin-top:40px}
+.authors{margin:0;font-family:var(--sans);font-size:1rem;line-height:1.7;max-width:62ch}
+.authors sup{color:var(--muted)}
+.affil{margin:.4rem 0 0;font-family:var(--sans);font-size:.88rem;color:var(--muted)}
+.links{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
+.btn{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 16px;border-radius:6px;border:1px solid var(--ink);background:var(--ink);color:#fff;font-family:var(--sans);font-size:.92rem;font-weight:600;text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--control);border-color:var(--control)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule)}
+.btn.ghost:hover{border-color:var(--ink);background:var(--surface)}
+.btn[aria-disabled="true"]{background:transparent;color:var(--faint);border:1px dashed var(--rule);cursor:default}
+.btn small{font-weight:500;opacity:.75}
+
+/* episode */
+.episode{background:var(--surface);border:1px solid var(--rule);border-radius:10px;margin-top:40px;overflow:hidden}
+.ep-head{display:flex;justify-content:space-between;align-items:baseline;gap:20px;padding:18px 22px 6px;font-family:var(--sans)}
+.ep-head h2{margin:0;font-size:1.05rem;font-weight:700;letter-spacing:-.005em}
+.ep-head p{margin:0;font-size:.85rem;color:var(--muted)}
+.ep-scroll{overflow-x:auto;padding:4px 10px 0}
+.ep-svg{display:block;width:100%;min-width:760px;height:auto;cursor:pointer;font-family:var(--sans)}
+.ep-svg text{font-family:var(--sans)}
+.ep-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 22px 14px;border-bottom:1px solid var(--rule);font-family:var(--sans)}
+.ctl{white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:40px;height:36px;padding:0 12px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;font-size:.88rem;font-weight:600;cursor:pointer}
+.ctl:hover{border-color:var(--ink)}
+.ctl.primary{background:var(--control);border-color:var(--control);color:#fff;min-width:92px}
+.ep-clock{white-space:nowrap;margin-left:auto;font-variant-numeric:tabular-nums;color:var(--muted);font-size:.88rem}
+.ep-body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0}
+.ep-tokens{padding:18px 22px 22px;border-right:1px solid var(--rule)}
+.ep-said{padding:18px 22px 22px}
+.ep-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;font-family:var(--sans);font-size:.88rem;color:var(--muted);margin-bottom:12px}
+.ep-meta strong{color:var(--ink);font-size:1rem}
+.chips{display:flex;flex-wrap:wrap;gap:6px;min-height:34px}
+.chip{display:inline-flex;align-items:center;height:30px;padding:0 9px;border-radius:5px;border:1px solid;font-family:var(--mono);font-size:.8rem;white-space:nowrap}
+.chip.control{color:var(--control);border-color:var(--control);background:var(--control-bg)}
+.chip.action{color:var(--action);border-color:var(--action-line);background:var(--action-bg)}
+.chip.text{color:var(--text);border-color:var(--text-line);background:var(--text-bg);font-family:var(--sans);font-size:.88rem}
+.chip.window{color:var(--window);border-color:var(--window-line);background:var(--window-bg)}
+.chip.eos{color:var(--eos);border-color:var(--eos-line);background:var(--eos-bg)}
+.chip.boundary{color:var(--boundary);border-color:#B5B5B5;background:var(--boundary-bg)}
+.chip.tool{color:var(--control);border:1px dashed var(--control);background:transparent;font-family:var(--sans);font-size:.82rem}
+.ep-why{margin:14px 0 0;font-size:1rem;line-height:1.55}
+.said{margin:0 0 14px;font-size:1rem;line-height:1.5}
+.said .who{display:block;font-family:var(--sans);font-size:.82rem;font-weight:700;margin-bottom:2px}
+.said.user .who{color:var(--audio)}
+.said.bot .who{color:var(--codec)}
+.said .line{color:var(--faint);transition:color .2s}
+.said.live .line{color:var(--ink)}
+.ep-legend{display:flex;flex-wrap:wrap;gap:6px 18px;padding:0 22px 16px;font-family:var(--sans);font-size:.8rem;color:var(--muted)}
+.ep-legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:16px;height:9px;border-radius:2px;border:1px solid}
+
+/* sections */
+section{padding:clamp(64px,9vw,110px) 0 0}
+.sec-title{margin:0 0 .5rem;font-family:var(--sans);font-weight:700;font-size:clamp(1.9rem,3.6vw,2.8rem);line-height:1.08;letter-spacing:-.03em;max-width:24ch}
+.lede{margin:0 0 2.2rem;color:var(--muted);font-size:1.12rem;max-width:62ch}
+h3{margin:0 0 .5rem;font-family:var(--sans);font-weight:700;font-size:1.3rem;letter-spacing:-.015em;line-height:1.25}
+p{margin:0 0 1rem}
+
+.short{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr);gap:clamp(32px,6vw,80px);align-items:start}
+.abstract p{font-size:1.08rem;line-height:1.75}
+.facts{margin:0;border-top:2px solid var(--ink)}
+.facts div{display:grid;grid-template-columns:7.2rem minmax(0,1fr);gap:16px;align-items:baseline;padding:16px 0;border-bottom:1px solid var(--rule)}
+.facts dt{font-family:var(--sans);font-weight:800;font-size:1.9rem;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.facts dd{margin:0;font-family:var(--sans);font-size:.92rem;line-height:1.45;color:var(--muted)}
+
+.figure{margin:0;background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:clamp(14px,2.5vw,28px)}
+.figure .scroller{overflow-x:auto}
+.figure img{display:block;width:100%;min-width:760px;height:auto}
+.figure figcaption{margin-top:16px;padding-top:14px;border-top:1px solid var(--rule);font-family:var(--sans);font-size:.88rem;line-height:1.5;color:var(--muted);display:flex;justify-content:space-between;gap:24px}
+.figure figcaption a{white-space:nowrap;font-weight:600}
+
+
+.note{font-family:var(--sans);font-size:.82rem;color:var(--muted);line-height:1.5;margin:14px 0 0}
+
+
+
+
+
+/* explorer */
+.explorer{display:grid;grid-template-columns:minmax(240px,.8fr) minmax(0,2fr);gap:clamp(24px,4vw,48px);align-items:start}
+.seg-group{margin:0 0 20px;border:0;padding:0}
+.seg-group legend{padding:0;margin-bottom:8px;font-family:var(--sans);font-size:.88rem;font-weight:600;color:var(--muted)}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{height:36px;padding:0 12px;border-radius:6px;border:1px solid var(--rule);background:var(--surface);font-family:var(--sans);font-size:.88rem;color:var(--ink);cursor:pointer}
+.seg button:hover{border-color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--control);border-color:var(--control);color:#fff}
+.ex-desc{font-size:.98rem;line-height:1.55;color:var(--ink);margin:6px 0 0;padding-top:16px;border-top:1px solid var(--rule)}
+.metrics{display:grid;gap:4px}
+.metric{display:grid;grid-template-columns:10.5rem minmax(0,1fr) 7.6rem;gap:14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule);font-family:var(--sans)}
+.metric .name{font-size:.92rem;font-weight:600;line-height:1.25}
+.metric .name small{display:block;font-weight:400;color:var(--faint);font-size:.78rem}
+.metric .track{position:relative;height:28px}
+.metric .track::before{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:var(--rule);transform:translateY(-50%)}
+.metric .tick{position:absolute;top:50%;width:2px;height:10px;background:#C7CDD6;transform:translate(-50%,-50%)}
+.metric .link{position:absolute;top:50%;height:4px;transform:translateY(-50%);border-radius:2px;transition:left .35s ease,width .35s ease,background-color .35s}
+.metric .dot{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;transform:translate(-50%,-50%);transition:left .35s ease}
+.metric .dot.base{background:var(--surface);border:2px solid var(--ink)}
+.metric .dot.sel{background:var(--control);border:2px solid var(--control)}
+.metric .num{text-align:right;font-variant-numeric:tabular-nums;font-size:.92rem}
+.metric .num small{display:block;font-size:.8rem}
+.better{color:#2F7D4A}.worse{color:var(--eos)}.same{color:var(--faint)}
+.ex-key{display:flex;gap:18px;font-family:var(--sans);font-size:.82rem;color:var(--muted);margin-bottom:6px}
+.ex-key span{display:inline-flex;align-items:center;gap:6px}
+.ex-key i{width:12px;height:12px;border-radius:50%;display:inline-block}
+
+/* tables */
+.tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--rule);margin-bottom:0}
+.tabs button{appearance:none;-webkit-appearance:none;border:0;border-bottom:3px solid transparent;border-radius:0;background:none;margin:0 0 -1px;padding:12px 16px;font-family:var(--sans);font-size:.95rem;font-weight:600;color:var(--muted);cursor:pointer}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--control)}
+.tabpanel{padding-top:20px}
+.tabpanel[hidden]{display:none}
+.tbl-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--rule);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:.9rem;font-variant-numeric:tabular-nums}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid #EDF0F3;white-space:nowrap}
+thead th{font-weight:600;color:var(--muted);font-size:.84rem;vertical-align:bottom;border-bottom:1px solid var(--rule);line-height:1.3}
+th.l,td.l{text-align:left}
+td.grp{font-weight:700;color:var(--ink);background:var(--paper);text-align:left;font-size:.84rem;padding-top:8px;padding-bottom:8px}
+td.ours,th.ours{background:#EEEDF5}
+thead th.ours{color:var(--control)}
+td.best{font-weight:800;color:var(--ink)}
+td.na{color:var(--faint)}
+tbody tr:last-child td{border-bottom:0}
+.tbl-note{font-family:var(--sans);font-size:.82rem;color:var(--muted);line-height:1.55;margin:12px 0 0;max-width:90ch}
+.readout{margin:0 0 18px;font-size:1.02rem;max-width:72ch}
+
+.limits{margin-top:1.6rem;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,5vw,64px)}
+.limits ul{margin:0;padding-left:1.1em}
+.limits li{margin-bottom:.5rem}
+
+.cite{position:relative}
+.cite pre{margin:0;background:var(--ink);color:#E9ECF2;border-radius:10px;padding:22px 24px;overflow-x:auto;font-family:var(--mono);font-size:.84rem;line-height:1.6}
+.copy{position:absolute;top:12px;right:12px;height:32px;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;font-family:var(--sans);font-size:.82rem;cursor:pointer}
+.copy:hover{background:rgba(255,255,255,.12)}
+
+footer{margin-top:clamp(64px,9vw,110px);border-top:1px solid var(--rule);padding:28px 0 48px;font-family:var(--sans);font-size:.85rem;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
+footer p{margin:0;max-width:70ch}
+
+@media (max-width:900px){
+  .byline,.short,.explorer,.limits{grid-template-columns:minmax(0,1fr)}
+  .links{justify-content:flex-start}
+  .ep-body{grid-template-columns:1fr}
+  .ep-tokens{border-right:0;border-bottom:1px solid var(--rule)}
+}
+@media (max-width:620px){
+  body{font-size:17px}
+  .wrap{width:calc(100% - 32px)}
+  .topnav a:not(.keep){display:none}
+  .ep-head{flex-direction:column;gap:4px;padding:16px 16px 4px}
+  .ep-controls,.ep-tokens,.ep-said,.ep-legend{padding-left:16px;padding-right:16px}
+  .metric{grid-template-columns:1fr 5.4rem;row-gap:4px}
+  .metric .track{grid-column:1 / -1;grid-row:2}
+  .figure figcaption{flex-direction:column;gap:8px}
+  .facts div{grid-template-columns:6rem minmax(0,1fr)}
+  .ep-scroll::after{content:"Scroll sideways to see the whole episode";display:block;padding:4px 6px 0;font-family:var(--sans);font-size:.78rem;color:var(--faint);position:sticky;left:0}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .metric .link,.metric .dot,.said .line{transition:none}
+}
+</style>
 </head>
 <body>
-  <main>
-    <h1>AdaptDuplex: From Static to Adaptive Full-Duplex Spoken Dialogue</h1>
-    <p class="authors">Zhiyang Zhou, Yingxin Shang, Zhou Wang, Hongwei Cai, Weixu Wang, Shuran Zhou<sup>*</sup>, Shuofeng Zhao, Wenke Fan, Qingxiang Guo, Dawei Yang, Lin Yang, Yang Song</p>
-    <p class="affil">Zuoyebang Education Technology (Beijing) Co., Ltd.<br><sup>*</sup>Corresponding author</p>
 
-    <nav aria-label="Paper materials">
-      <a href="#" aria-disabled="true">Paper<small>Coming soon</small></a>
-      <a href="https://arxiv.org/abs/2609.29217">arXiv</a>
-      <a href="#" aria-disabled="true">Demos<small>Coming soon</small></a>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="AdaptDuplex, back to top">
+      <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="8" width="26" height="6" rx="2" fill="#4C72B0"/><rect x="3" y="18" width="16" height="6" rx="2" fill="#B79A3C"/></svg>
+      AdaptDuplex
+    </a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="#episode">Episode</a>
+      <a href="#method">Method</a>
+      <a href="#explorer">Explorer</a>
+      <a href="#results">Results</a>
+      <a class="keep" href="#cite">Cite</a>
     </nav>
+  </div>
+</header>
 
-    <h2>Abstract</h2>
-    <p>
-      Full-duplex spoken dialogue requires simultaneous listening and speaking at sub-second latency, under conversational timing and cognitive demands that change moment to moment.
-      Yet current models mostly impose static operating points, lacking a systematic mechanism for adaptive decisions.
-      We present AdaptDuplex, which extends Qwen3-Omni with such a mechanism, co-designed across three layers.
-      A compact token-level protocol represents every window as a canonical sequence, trains dual-stream alignment through a bounded text lead over speech, and exposes every behavioral decision as an explicit token for training-free runtime control via logits bias.
-      Adaptive mechanisms dynamically predict among discrete window durations and augment direct response as needed with non-blocking cognitive consolidation and multi-flight external reasoning.
-      A progressive pipeline introduces these behaviors through a three-stage Thinker curriculum, then Talker-only and joint SFT, with GRPO as a preliminary increment.
-      On Full-Duplex-Bench v1 and v1.5, AdaptDuplex outperforms DuplexOmni on 18 of 21 comparable turn-taking, overlap-behavior, and timing metrics and MiniCPM-o 4.5 on 19 of 22, with gains in both interaction decisions and response timing.
-      On human-recorded HumDial-FDBench, it attains the top Final score (69.6) of the compared duplex models.
-    </p>
+<main id="top">
+  <div class="wrap">
+    <header class="hero">
+      <h1>AdaptDuplex</h1>
+      <p class="sub">From static to adaptive full-duplex spoken dialogue</p>
+      <div class="byline">
+        <div>
+          <p class="authors">Zhiyang Zhou, Yingxin Shang, Zhou Wang, Hongwei Cai, Weixu Wang, Shuran Zhou<sup>*</sup>, Shuofeng Zhao, Wenke Fan, Qingxiang Guo, Dawei Yang, Lin Yang, Yang Song</p>
+          <p class="affil">Zuoyebang Education Technology (Beijing) Co., Ltd. <sup>*</sup>Corresponding author</p>
+        </div>
+        <div class="links">
+          <span class="btn" aria-disabled="true">Paper <small>coming soon</small></span>
+          <a class="btn ghost" href="https://arxiv.org/abs/2609.29217">arXiv <small>2609.29217</small></a>
+          <span class="btn" aria-disabled="true">Demos <small>coming soon</small></span>
+          <a class="btn ghost" href="#cite">BibTeX</a>
+        </div>
+      </div>
 
-    <p class="status">This site is a convenience landing page; the arXiv extended version is the archival source of the Online Appendix.</p>
-  </main>
+      <div class="episode" id="episode">
+        <div class="ep-head">
+          <h2>One episode, window by window</h2>
+          <p>A scripted conversation drawn with the paper's protocol. Timing and tokens are illustrative.</p>
+        </div>
+        <div class="ep-scroll">
+          <svg class="ep-svg" id="epSvg" viewBox="0 0 1000 284" role="img" aria-labelledby="epSvgTitle">
+            <title id="epSvgTitle">Timeline of a full-duplex episode: user speech, adaptive windows, AdaptDuplex speech, memory writes, and two external reasoning slots.</title>
+          </svg>
+        </div>
+        <div class="ep-controls">
+          <button class="ctl primary" id="epPlay" type="button" aria-label="Play episode">Play</button>
+          <button class="ctl" id="epPrev" type="button" aria-label="Previous window">&#8249; Window</button>
+          <button class="ctl" id="epNext" type="button" aria-label="Next window">Window &#8250;</button>
+          <span class="ep-clock" id="epClock" aria-live="off">0.00 s</span>
+        </div>
+        <div class="ep-body">
+          <div class="ep-tokens">
+            <div class="ep-meta" id="epMeta"></div>
+            <div class="chips" id="epChips" aria-live="polite"></div>
+            <p class="ep-why" id="epWhy"></p>
+          </div>
+          <div class="ep-said">
+            <p class="said user" id="saidUser"><span class="who">User</span><span class="line"></span></p>
+            <p class="said bot" id="saidBot"><span class="who">AdaptDuplex</span><span class="line"></span></p>
+          </div>
+        </div>
+        <div class="ep-legend" aria-label="Legend">
+          <span><i class="sw" style="background:var(--audio-bg);border-color:var(--audio)"></i>User speech</span>
+          <span><i class="sw" style="background:var(--codec-bg);border-color:var(--codec-line)"></i>AdaptDuplex speech</span>
+          <span><i class="sw" style="background:var(--surface);border-color:var(--control)"></i>Listen window</span>
+          <span><i class="sw" style="background:var(--control-bg);border-color:var(--control)"></i>Speak window</span>
+          <span><i class="sw" style="background:var(--action-bg);border-color:var(--action-line)"></i>Request in flight</span>
+          <span>S, M, L: 0.48, 0.64, 0.96 s</span>
+        </div>
+      </div>
+    </header>
+
+    <section id="abstract" aria-labelledby="abstract-title">
+      <div class="short">
+        <div class="abstract">
+          <h2 class="sec-title" id="abstract-title">Abstract</h2>
+          <p>Full-duplex spoken dialogue requires simultaneous listening and speaking at sub-second latency, under conversational timing and cognitive demands that change moment to moment. Yet current models mostly impose static operating points, lacking a systematic mechanism for adaptive decisions. We present AdaptDuplex, which extends Qwen3-Omni with such a mechanism, co-designed across three layers. A compact token-level protocol represents every window as a canonical sequence, trains dual-stream alignment through a bounded text lead over speech, and exposes every behavioral decision as an explicit token for training-free runtime control via logits bias. Adaptive mechanisms dynamically predict among discrete window durations and augment direct response as needed with non-blocking cognitive consolidation and multi-flight external reasoning. A progressive pipeline introduces these behaviors through a three-stage Thinker curriculum, then Talker-only and joint SFT, with GRPO as a preliminary increment. On Full-Duplex-Bench v1 and v1.5, AdaptDuplex outperforms DuplexOmni on 18 of 21 comparable turn-taking, overlap-behavior, and timing metrics and MiniCPM-o 4.5 on 19 of 22, with gains in both interaction decisions and response timing. On human-recorded HumDial-FDBench, it attains the top Final score (69.6) of the compared duplex models.</p>
+        </div>
+        <dl class="facts" aria-label="Key numbers">
+          <div><dt>18 / 21</dt><dd>Comparable Full-Duplex-Bench v1 and v1.5 metrics where AdaptDuplex beats DuplexOmni</dd></div>
+          <div><dt>19 / 22</dt><dd>Comparable metrics where it beats MiniCPM-o 4.5</dd></div>
+          <div><dt>69.6</dt><dd>HumDial-FDBench Final score, the highest among the compared duplex models</dd></div>
+          <div><dt>&minus;78%</dt><dd>Protocol tokens per window versus JSON serialization (26.44 to 5.87)</dd></div>
+          <div><dt>0.34 s</dt><dd>Response latency after a genuine interruption on FDB-v1.5, on one H100</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section id="method" aria-labelledby="method-title">
+      <h2 class="sec-title" id="method-title">Every behavioral decision is an explicit token</h2>
+      <p class="lede">AdaptDuplex keeps the Thinker–Talker architecture of Qwen3-Omni-30B-A3B, but the Thinker now makes an interaction decision in every window, with reply text as an optional output. A compact token protocol, adaptive window and action mechanisms, and a progressive training pipeline are designed together around that one principle; details are in the paper and the online appendix.</p>
+
+      <figure class="figure">
+        <div class="scroller" tabindex="0" aria-label="Overview figure, scrollable on small screens">
+          <img src="figures/overview.svg" width="1300" height="410" alt="AdaptDuplex overview. Audio and video input arrives in windows of varying length. The Thinker emits a listen or speak control, optional action tokens, text, a next-window token and boundary tokens. Assistant text is queued in a Text FIFO with bounded Text-ahead, and the Talker generates codec tokens. Actions reach an L1 memory backend and L2 reasoning backends, whose results return as Tool Blocks.">
+        </div>
+        <figcaption>
+          <span>Figure 1. One interleaved token protocol carries adaptive windows, dual-stream alignment, and tiered reasoning. Window bands, token placements, and A/V interleaving are schematic.</span>
+          <a href="figures/overview.pdf">Figure as PDF</a>
+        </figcaption>
+      </figure>
+
+    </section>
+
+    <section id="explorer" aria-labelledby="explorer-title">
+      <h2 class="sec-title" id="explorer-title">Move the operating point</h2>
+      <p class="lede">Every variant in Table 4 of the paper on FDB-v1.5, compared against the default system: Curriculum SFT, dynamic windows, no logit bias. Choose one change at a time.</p>
+      <div class="explorer">
+        <div>
+          <fieldset class="seg-group"><legend>Window policy, forced by window-token bias</legend><div class="seg" data-group="window"></div></fieldset>
+          <fieldset class="seg-group"><legend>Speak-logit scale α</legend><div class="seg" data-group="alpha"></div></fieldset>
+          <fieldset class="seg-group"><legend>Training recipe</legend><div class="seg" data-group="recipe"></div></fieldset>
+          <p class="ex-desc" id="exDesc"></p>
+        </div>
+        <div>
+          <div class="ex-key"><span><i style="border:2px solid var(--ink);background:#fff"></i>Default</span><span><i style="background:var(--control)"></i>Selected</span><span><i style="width:2px;height:10px;border-radius:0;background:#C7CDD6"></i>Other variants</span></div>
+          <div class="metrics" id="metrics"></div>
+          <p class="note">Behavior: 1 for Respond (interruption) or Resume (other scenarios), 0.5 for Uncertain, 0 otherwise. Yield is interruption stop latency; Hold is the mean stop latency over the three non-interruption scenarios; Response is the mean over all four.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="results" aria-labelledby="results-title">
+      <h2 class="sec-title" id="results-title">Benchmarks</h2>
+      <p class="lede">Full-Duplex-Bench v1 and v1.5 follow their official scoring and transcription; HumDial-FDBench is human-recorded Chinese and English. All three duplex systems stream on a single H100, so latencies include computation. No benchmark scripts, audio or speakers enter data generation.</p>
+      <div class="tabs" role="tablist" aria-label="Benchmark tables">
+        <button role="tab" id="tab-v1" aria-controls="panel-v1" aria-selected="true">FDB-v1 turn-taking</button>
+        <button role="tab" id="tab-v15" aria-controls="panel-v15" aria-selected="false" tabindex="-1">FDB-v1.5 overlap</button>
+        <button role="tab" id="tab-hd" aria-controls="panel-hd" aria-selected="false" tabindex="-1">HumDial-FDBench</button>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="panel-v1" aria-labelledby="tab-v1">
+        <p class="readout">AdaptDuplex holds back a full turn more often than DuplexOmni when only a backchannel is due (takeover rate 0.334 vs. 0.491) and takes the floor when a turn is actually due (smooth-turn TOR 0.982 vs. 0.193). On interruptions it is both more accurate and faster.</p>
+        <div class="tbl-wrap"><table id="t1"></table></div>
+        <p class="tbl-note">TOR: takeover rate. Syn./Can.: synthetic and Candor pauses. Frequency in events per second. GPT-4o scores (0–5) and latencies (s) are conditional on takeover; negative per-sample latencies are clipped to 0. ‡ All samples negative, excluded from bold. † Published results, latencies not hardware-matched. Bold marks the best value in each row.</p>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="panel-v15" aria-labelledby="tab-v15" hidden>
+        <p class="readout">Under genuine interruptions and other overlap, AdaptDuplex has the lowest response latency among native duplex systems in every scenario, and resumes far more reliably than DuplexOmni under backchannels (0.55 vs. 0.28) and background speech (0.43 vs. 0.07).</p>
+        <div class="tbl-wrap"><table id="t2"></table></div>
+        <p class="tbl-note">Behavior is 1 for Respond (interruption) or Resume (other scenarios), 0.5 for Uncertain (talking to others, background speech), 0 otherwise. –: no qualifying event. † Published results, latencies not hardware-matched. Bold marks the best value in each row.</p>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="panel-hd" aria-labelledby="tab-hd" hidden>
+        <p class="readout">On human recordings at the same operating point, AdaptDuplex has the highest Final score of the compared duplex models, with delays of 0.835 s in Chinese and 1.345 s in English. The half-duplex Qwen3-Omni+VAD is more accurate at interruption; AdaptDuplex is more accurate at rejection.</p>
+        <div class="tbl-wrap"><table id="t3"></table></div>
+        <p class="tbl-note">NR: not reported. ALL pools ZH and EN under the official protocol. Int./Rej.: averaged subscenario scores; Delay: combined applicable latency types. D-Score: official logarithmic normalization of ALL Delay. Final = 0.4 Int. + 0.4 Rej. + 0.2 D-Score. † From the HumDial-FDBench paper. Bold marks the best value in each row.</p>
+      </div>
+    </section>
+
+    <section id="limits" aria-labelledby="limits-title">
+      <h2 class="sec-title" id="limits-title">What is still open</h2>
+      <div class="limits">
+        <div>
+          <h3>Limitations</h3>
+          <ul>
+            <li>Evaluation covers Chinese and English only.</li>
+            <li>The window controller picks among three discrete durations, not a continuous horizon.</li>
+            <li>External reasoning is capped at four concurrent requests.</li>
+            <li>General-ability retention after duplex adaptation, and end-to-end L1/L2 evaluation with real backends, remain to be measured.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Next</h3>
+          <ul>
+            <li>Continuous window prediction.</li>
+            <li>More languages.</li>
+            <li>Adaptive concurrency limits.</li>
+            <li>Training and evaluation with visual inputs.</li>
+            <li>Multi-party conversation.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="cite" aria-labelledby="cite-title">
+      <h2 class="sec-title" id="cite-title">Cite</h2>
+      <div class="cite">
+        <pre id="bibtex">@article{zhou2026adaptduplex,
+  title   = {AdaptDuplex: From Static to Adaptive Full-Duplex Spoken Dialogue},
+  author  = {Zhou, Zhiyang and Shang, Yingxin and Wang, Zhou and Cai, Hongwei and
+             Wang, Weixu and Zhou, Shuran and Zhao, Shuofeng and Fan, Wenke and
+             Guo, Qingxiang and Yang, Dawei and Yang, Lin and Song, Yang},
+  journal = {arXiv preprint arXiv:2609.29217},
+  year    = {2026}
+}</pre>
+        <button class="copy" id="copyBib" type="button">Copy</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>AdaptDuplex project page. Figures and numbers are taken from the paper; the episode at the top is an illustrative rendering of the protocol, not a model recording.</p>
+    <p>Zuoyebang Education Technology</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+"use strict";
+var NS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent){var e=document.createElementNS(NS,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function h(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
+var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------------- Episode ---------------- */
+var DUR={S:0.48,M:0.64,L:0.96};
+var NAME={S:"short",M:"mid",L:"long"};
+var W=[
+ {z:"M",c:"listen",n:"L",why:"The user starts talking. Listen, and ask for a long next window to gather evidence mid-utterance."},
+ {z:"L",c:"listen",n:"M",why:"Still mid-sentence. Keep listening."},
+ {z:"M",c:"speak",t:"Mm-hm.",n:"M",eos:1,why:"A short pause after a clause. A backchannel is due, not a full turn: say \u201cMm-hm\u201d and close the turn."},
+ {z:"M",c:"listen",n:"S",why:"The question lands near the end of this window. Listen, and request a short window so the reply comes fast."},
+ {z:"S",c:"speak",a:["<|memory|>","<|launch:0|>"],t:"Let me check",n:"S",why:"Take the floor. Save the trip to memory (L1) and launch a forecast request in slot 0 (L2), waiting on neither."},
+ {z:"S",c:"speak",t:"the forecast",n:"M",why:"Keep speaking. Queued text reaches the Talker through the FIFO."},
+ {z:"M",c:"speak",t:"for Kyoto.",n:"M",eos:1,why:"Finish the line and end the speaking turn while slot 0 is still in flight."},
+ {z:"M",c:"listen",n:"M",why:"The user adds a second request. Listen."},
+ {z:"M",c:"listen",n:"S",why:"The user's turn is ending. Request a short window."},
+ {z:"S",c:"speak",a:["<|launch:1|>"],t:"Sure, adding Osaka.",n:"M",why:"Launch a second request in slot 1. Two requests are now in flight."},
+ {z:"M",c:"speak",n:"M",eos:1,why:"Slot 0 returns mid-window. Its result waits for the next Unit boundary; the current speech is not interrupted."},
+ {z:"M",c:"speak",tb:"Tool Block (slot 0)",t:"Kyoto: light rain Saturday afternoon,",n:"M",why:"The Tool Block is injected at the boundary. Answer from it."},
+ {z:"M",c:"speak",t:"about sixty percent, clearing",n:"S",why:"Continue the answer."},
+ {z:"S",c:"listen",n:"S",eos:1,why:"The user barges in. Yield: switch to listen and end the speaking turn."},
+ {z:"S",c:"listen",n:"S",why:"Leave the floor to the user, with short windows to catch the end quickly."},
+ {z:"S",c:"listen",n:"S",why:"The user is finishing. One more short window."},
+ {z:"S",c:"speak",a:["<|cancel:1|>"],t:"Yes, bring one",n:"M",why:"Osaka is no longer wanted: cancel slot 1, and answer directly."},
+ {z:"M",c:"speak",t:"for Saturday afternoon.",n:"M",eos:1,why:"Finish and close the turn."},
+ {z:"M",c:"listen",n:"M",why:"Back to listening."}
+];
+var t0=0;W.forEach(function(w,i){w.s=t0;w.e=t0+DUR[w.z];t0=w.e;w.i=i;});
+var T=t0;
+var USER=[
+ {s:0.10,e:1.55,txt:"I'm heading to Kyoto next week,"},
+ {s:2.00,e:2.74,txt:"will it rain on Saturday?"},
+ {s:4.60,e:5.55,txt:"Oh, and Osaka too, please."},
+ {s:7.95,e:9.30,txt:"Actually, forget Osaka. Do I need an umbrella?"}
+];
+var BOT=[
+ {s:1.68,e:2.02,txt:"Mm-hm."},
+ {s:2.95,e:4.34,txt:"Let me check the forecast for Kyoto."},
+ {s:5.84,e:6.74,txt:"Sure, adding Osaka."},
+ {s:6.96,e:8.30,txt:"Kyoto: light rain Saturday afternoon, about sixty percent, clearing\u2026",cut:1},
+ {s:9.66,e:10.66,txt:"Yes, bring one for Saturday afternoon."}
+];
+var X0=118,X1=988;function X(t){return X0+(X1-X0)*t/T;}
+var ROW={win:34,user:82,bot:120,mem:168,s0:198,s1:228};
+var svg=document.getElementById("epSvg");
+var C={ink:"#1C2638",muted:"#566074",faint:"#8A93A3",rule:"#DADFE6",control:"#3E3A6E",controlBg:"#E4E3EE",audio:"#4C72B0",audioBg:"#E6EBF4",codec:"#B79A3C",codecBg:"#EFE9D4",action:"#DD8452",actionT:"#B35F2E",actionBg:"#F8E7DC",eos:"#C44E52"};
+var defs=el("defs",{},svg);
+var pat=el("pattern",{id:"hatch",width:"6",height:"6",patternUnits:"userSpaceOnUse",patternTransform:"rotate(45)"},defs);
+el("rect",{width:"6",height:"6",fill:C.actionBg},pat);el("line",{x1:"0",y1:"0",x2:"0",y2:"6",stroke:"#EFC7AE","stroke-width":"3"},pat);
+var clip=el("clipPath",{id:"reveal"},defs);var clipRect=el("rect",{x:"0",y:"0",width:"0",height:"284"},clip);
+
+// labels + guides
+var labels=[["Windows",ROW.win+13],["User",ROW.user+13],["AdaptDuplex",ROW.bot+13],["L1 memory",ROW.mem+10],["L2 slot 0",ROW.s0+10],["L2 slot 1",ROW.s1+10]];
+labels.forEach(function(l){var tx=el("text",{x:"8",y:String(l[1]+4),"font-size":"12","font-weight":"600",fill:C.muted},svg);tx.textContent=l[0];});
+[ROW.user,ROW.bot].forEach(function(y){el("line",{x1:X0,x2:X1,y1:y+13,y2:y+13,stroke:C.rule,"stroke-width":"1"},svg);});
+[ROW.mem,ROW.s0,ROW.s1].forEach(function(y){el("line",{x1:X0,x2:X1,y1:y+10,y2:y+10,stroke:C.rule,"stroke-width":"1","stroke-dasharray":"2 4"},svg);});
+for(var s=0;s<=11;s++){var gx=X(s);el("line",{x1:gx,x2:gx,y1:"258",y2:"263",stroke:C.faint},svg);var tt=el("text",{x:gx,y:"277","font-size":"10.5",fill:C.faint,"text-anchor":"middle"},svg);if(s%2===0){tt.textContent=s+" s";}}
+
+function drawContent(g,ghost){
+  // windows
+  W.forEach(function(w){
+    var r=el("rect",{x:X(w.s)+1,y:ROW.win,width:X(w.e)-X(w.s)-2,height:26,rx:"4",fill:w.c==="speak"?C.controlBg:"#fff",stroke:C.control,"stroke-width":"1","data-w":w.i},g);
+    if(!ghost)r.classList.add("wband");
+    var tx=el("text",{x:(X(w.s)+X(w.e))/2,y:ROW.win+17,"font-size":"11","font-weight":"700",fill:C.control,"text-anchor":"middle"},g);tx.textContent=w.z;
+  });
+  USER.forEach(function(u){el("rect",{x:X(u.s),y:ROW.user,width:X(u.e)-X(u.s),height:26,rx:"4",fill:C.audioBg,stroke:C.audio},g);drawWave(g,u,ROW.user,C.audio);});
+  BOT.forEach(function(b){el("rect",{x:X(b.s),y:ROW.bot,width:X(b.e)-X(b.s),height:26,rx:"4",fill:C.codecBg,stroke:C.codec},g);drawWave(g,b,ROW.bot,C.codec);
+    if(b.cut){el("line",{x1:X(b.e),x2:X(b.e),y1:ROW.bot-4,y2:ROW.bot+30,stroke:C.eos,"stroke-width":"2.5"},g);}});
+  // memory
+  el("rect",{x:X(W[4].s),y:ROW.mem,width:X(3.32)-X(W[4].s),height:20,rx:"4",fill:C.actionBg,stroke:C.action},g);
+  var m=el("text",{x:X(3.32)+8,y:ROW.mem+14,"font-size":"11",fill:C.actionT},g);m.textContent="profile: trip to Kyoto next week";
+  // slot 0
+  el("rect",{x:X(W[4].s),y:ROW.s0,width:X(6.50)-X(W[4].s),height:20,rx:"4",fill:"url(#hatch)",stroke:C.action},g);
+  var a=el("text",{x:X(W[4].s)+8,y:ROW.s0+14,"font-size":"11",fill:C.actionT},g);a.textContent="launch:0  forecast Kyoto";
+  var ok=el("text",{x:X(6.50)+5,y:ROW.s0+14,"font-size":"12","font-weight":"700",fill:C.control},g);ok.textContent="\u2713 returned";
+  el("path",{d:"M"+X(6.50)+" "+ROW.s0+" C "+X(6.50)+" "+(ROW.win+60)+", "+X(W[11].s)+" "+(ROW.win+60)+", "+X(W[11].s)+" "+(ROW.win+28),fill:"none",stroke:C.control,"stroke-width":"1.2","stroke-dasharray":"3 3"},g);
+  var tb=el("text",{x:X(W[11].s)+6,y:ROW.win+42,"font-size":"10.5","font-weight":"600",fill:C.control},g);tb.textContent="Tool Block at boundary";
+  // slot 1
+  el("rect",{x:X(W[9].s),y:ROW.s1,width:X(W[16].s)-X(W[9].s),height:20,rx:"4",fill:"url(#hatch)",stroke:C.action},g);
+  var b1=el("text",{x:X(W[9].s)+8,y:ROW.s1+14,"font-size":"11",fill:C.actionT},g);b1.textContent="launch:1  forecast Osaka";
+  var cx=el("text",{x:X(W[16].s)+5,y:ROW.s1+14,"font-size":"11","font-weight":"700",fill:C.eos},g);cx.textContent="\u2715 cancelled";
+}
+function drawWave(g,seg,y,col){
+  var n=Math.max(2,Math.floor((X(seg.e)-X(seg.s)-6)/4));var seed=Math.floor(seg.s*100);
+  for(var i=0;i<n;i++){var v=Math.abs(Math.sin((i+seed)*1.7)*Math.cos((i+seed)*0.37));var hh=4+v*14;var x=X(seg.s)+4+i*4;
+    el("line",{x1:x,x2:x,y1:y+13-hh/2,y2:y+13+hh/2,stroke:col,"stroke-width":"2","stroke-linecap":"round",opacity:"0.7"},g);}
+}
+var ghost=el("g",{opacity:"0.2"},svg);drawContent(ghost,true);
+var live=el("g",{"clip-path":"url(#reveal)"},svg);drawContent(live,false);
+var curRect=el("rect",{x:"0",y:String(ROW.win-3),width:"0",height:"32",rx:"6",fill:"none",stroke:C.control,"stroke-width":"2"},svg);
+var head=el("g",{},svg);
+el("line",{x1:"0",x2:"0",y1:ROW.win-8,y2:"262",stroke:C.ink,"stroke-width":"1.5"},head);
+el("circle",{cx:"0",cy:ROW.win-8,r:"4",fill:C.ink},head);
+
+var metaEl=document.getElementById("epMeta"),chipsEl=document.getElementById("epChips"),whyEl=document.getElementById("epWhy"),clockEl=document.getElementById("epClock");
+var uLine=document.querySelector("#saidUser .line"),bLine=document.querySelector("#saidBot .line"),uP=document.getElementById("saidUser"),bP=document.getElementById("saidBot");
+var playBtn=document.getElementById("epPlay");
+var t=reduce?W[4].s+0.01:0,playing=false,last=null,curW=-1,holdUntil=0;
+
+function chip(type,txt){var c=h("span","chip "+type,txt);return c;}
+function renderWindow(i){
+  var w=W[i];metaEl.innerHTML="";
+  var s1=h("strong",null,"Window "+(i+1)+" of "+W.length);metaEl.appendChild(s1);
+  metaEl.appendChild(h("span",null,DUR[w.z].toFixed(2)+" s, "+NAME[w.z]));
+  metaEl.appendChild(h("span",null,w.c==="speak"?"speaking":"listening"));
+  chipsEl.innerHTML="";
+  if(w.tb)chipsEl.appendChild(chip("tool",w.tb));
+  chipsEl.appendChild(chip("control","<|"+w.c+"|>"));
+  (w.a||[]).forEach(function(a){chipsEl.appendChild(chip("action",a));});
+  if(w.t)chipsEl.appendChild(chip("text",w.t));
+  chipsEl.appendChild(chip("window","<|window:"+NAME[w.n]+"|>"));
+  if(w.eos)chipsEl.appendChild(chip("eos","<|turn_eos|>"));
+  chipsEl.appendChild(chip("boundary","<|chunk_eos|>"));
+  whyEl.textContent=w.why;
+  curRect.setAttribute("x",String(X(w.s)-2));curRect.setAttribute("width",String(X(w.e)-X(w.s)+4));
+}
+function findSeg(arr,tt){var cur=null;arr.forEach(function(a){if(tt>=a.s-0.05&&tt<=a.e+0.6)cur=a;});return cur;}
+function lastSeg(arr,tt){var cur=null;arr.forEach(function(a){if(tt>=a.s)cur=a;});return cur;}
+function update(){
+  var x=X(Math.min(t,T));clipRect.setAttribute("width",String(x));head.setAttribute("transform","translate("+x+",0)");
+  clockEl.textContent=Math.min(t,T).toFixed(2)+" s of "+T.toFixed(2)+" s";
+  var i=0;for(var k=0;k<W.length;k++){if(t>=W[k].s)i=k;}
+  if(i!==curW){curW=i;renderWindow(i);}
+  var u=lastSeg(USER,t),b=lastSeg(BOT,t);
+  uLine.textContent=u?u.txt:"\u2014";bLine.textContent=b?b.txt:"\u2014";
+  uP.classList.toggle("live",!!(u&&t<=u.e));bP.classList.toggle("live",!!(b&&t<=b.e));
+}
+function frame(ts){
+  if(!playing){last=null;return;}
+  if(last==null)last=ts;var dt=(ts-last)/1000;last=ts;
+  if(holdUntil){if(ts<holdUntil){requestAnimationFrame(frame);return;}holdUntil=0;t=0;last=ts;}
+  t+=dt;
+  if(t>=T){t=T;update();holdUntil=ts+1800;requestAnimationFrame(frame);return;}
+  update();requestAnimationFrame(frame);
+}
+function setPlaying(p){playing=p;playBtn.textContent=p?"Pause":"Play";playBtn.setAttribute("aria-label",p?"Pause episode":"Play episode");if(p){if(t>=T)t=0;last=null;requestAnimationFrame(frame);}}
+playBtn.addEventListener("click",function(){setPlaying(!playing);userTouched=true;});
+function jump(i){i=Math.max(0,Math.min(W.length-1,i));setPlaying(false);t=W[i].s+0.001;update();userTouched=true;}
+document.getElementById("epPrev").addEventListener("click",function(){jump(curW-1);});
+document.getElementById("epNext").addEventListener("click",function(){jump(curW+1);});
+svg.addEventListener("click",function(ev){var pt=svg.createSVGPoint();pt.x=ev.clientX;pt.y=ev.clientY;var p=pt.matrixTransform(svg.getScreenCTM().inverse());if(p.x<X0)return;var tt=(p.x-X0)/(X1-X0)*T;var i=0;for(var k=0;k<W.length;k++){if(tt>=W[k].s)i=k;}jump(i);});
+var userTouched=false;
+update();
+if(!reduce&&"IntersectionObserver" in window){
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(userTouched)return;setPlaying(e.isIntersecting);});},{threshold:0.35});
+  io.observe(document.getElementById("episode"));
+}
+
+/* ---------------- Explorer ---------------- */
+var MET=[
+ {k:"int",n:"Interruption",u:"behavior",up:1},
+ {k:"back",n:"Backchannel",u:"behavior",up:1},
+ {k:"talk",n:"Talking to others",u:"behavior",up:1},
+ {k:"bg",n:"Background speech",u:"behavior",up:1},
+ {k:"yield",n:"Yield",u:"seconds",up:0},
+ {k:"hold",n:"Hold",u:"seconds",up:1},
+ {k:"resp",n:"Response",u:"seconds",up:0}
+];
+var V={
+ def:{g:null,l:"Default",v:[0.79,0.55,0.35,0.43,1.32,1.41,0.37],d:"The default system: Curriculum SFT checkpoint, dynamic windows, no logit bias."},
+ w48:{g:"window",l:"Fixed 0.48 s",v:[0.82,0.52,0.31,0.34,1.19,1.38,0.32],d:"Always short: the fastest to respond and yield, but the weakest on backchannels and background speech."},
+ w64:{g:"window",l:"Fixed 0.64 s",v:[0.78,0.54,0.33,0.43,1.81,1.40,0.45],d:"Always mid: yields noticeably more slowly than the dynamic policy without gaining behavior."},
+ w96:{g:"window",l:"Fixed 0.96 s",v:[0.76,0.56,0.34,0.46,2.61,1.46,0.66],d:"Always long: best on backchannel and background speech, but the slowest to respond and to yield. The dynamic policy gets near-short latency with near-long backchannel behavior."},
+ a05:{g:"alpha",l:"\u00d70.5",v:[0.76,0.58,0.38,0.46,1.28,1.34,0.42],d:"Adding ln 0.5 to the speak logit makes the model more reluctant to speak: better at letting overlap pass, slower to respond."},
+ a2:{g:"alpha",l:"\u00d72",v:[0.81,0.49,0.32,0.37,1.36,1.48,0.33],d:"Adding ln 2 to the speak logit makes the model more eager: better on interruptions and faster to respond, worse at ignoring backchannels and side talk. No retraining involved."},
+ mix:{g:"recipe",l:"Mixed SFT",v:[0.62,0.41,0.28,0.24,2.86,1.40,1.65],d:"A single-stage control with matched exposure. The curriculum accounts for most of the gain, most visibly in latency."},
+ joint:{g:"recipe",l:"+ Joint SFT",v:[0.83,0.55,0.37,0.46,1.20,1.44,0.32],d:"Joint SFT from the Curriculum checkpoint matches or improves on every metric."},
+ grpo:{g:"recipe",l:"+ GRPO",v:[0.85,0.57,0.44,0.45,1.08,1.45,0.30],d:"GRPO from the Joint checkpoint, a preliminary increment. Clearest gains on talking to others, yield and response; background speech dips slightly."}
+};
+var GROUPS={window:[["def","Dynamic"],["w48","0.48 s"],["w64","0.64 s"],["w96","0.96 s"]],alpha:[["a05","\u00d70.5"],["def","\u00d71"],["a2","\u00d72"]],recipe:[["mix","Mixed SFT"],["def","Curriculum"],["joint","+ Joint SFT"],["grpo","+ GRPO"]]};
+var sel="def";
+var segBtns=[];
+Object.keys(GROUPS).forEach(function(g){var box=document.querySelector('.seg[data-group="'+g+'"]');GROUPS[g].forEach(function(o){var b=h("button",null,o[1]);b.type="button";b.dataset.v=o[0];b.dataset.g=g;b.addEventListener("click",function(){sel=o[0];renderEx();});box.appendChild(b);segBtns.push(b);});});
+var mBox=document.getElementById("metrics");var rows=[];
+var keys=Object.keys(V);
+MET.forEach(function(m,mi){
+  var vals=keys.map(function(k){return V[k].v[mi];});var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);var pad=(hi-lo)*0.08||0.05;lo-=pad;hi+=pad;
+  var r=h("div","metric");var nm=h("div","name",m.n);nm.appendChild(h("small",null,m.u+(m.up?", higher is better":", lower is better")));r.appendChild(nm);
+  var tr=h("div","track");keys.forEach(function(k){var tk=h("i","tick");tk.style.left=((V[k].v[mi]-lo)/(hi-lo)*100)+"%";tr.appendChild(tk);});
+  var ln=h("i","link"),d0=h("i","dot base"),d1=h("i","dot sel");tr.appendChild(ln);tr.appendChild(d0);tr.appendChild(d1);r.appendChild(tr);
+  var num=h("div","num");r.appendChild(num);mBox.appendChild(r);
+  rows.push({m:m,mi:mi,lo:lo,hi:hi,ln:ln,d0:d0,d1:d1,num:num});
+});
+function renderEx(){
+  segBtns.forEach(function(b){var on=(b.dataset.v===sel)&&(sel!=="def"||true);
+    // "def" appears in several groups; highlight it in all groups only when default is selected; otherwise only in the groups not containing sel
+    var g=b.dataset.g;var selG=V[sel].g;
+    var pressed=sel==="def"?b.dataset.v==="def":(g===selG?b.dataset.v===sel:b.dataset.v==="def");
+    b.setAttribute("aria-pressed",pressed?"true":"false");});
+  document.getElementById("exDesc").textContent=V[sel].d;
+  rows.forEach(function(r){
+    var b=V.def.v[r.mi],s=V[sel].v[r.mi];var pb=(b-r.lo)/(r.hi-r.lo)*100,ps=(s-r.lo)/(r.hi-r.lo)*100;
+    r.d0.style.left=pb+"%";r.d1.style.left=ps+"%";r.d1.style.display=sel==="def"?"none":"block";
+    r.ln.style.left=Math.min(pb,ps)+"%";r.ln.style.width=Math.abs(ps-pb)+"%";
+    var diff=s-b;var good=r.m.up?diff>0:diff<0;var cls=Math.abs(diff)<1e-9?"same":(good?"better":"worse");
+    r.ln.style.background=cls==="better"?"#2F7D4A":(cls==="worse"?"#C44E52":"transparent");
+    var dec=r.m.u==="seconds"?2:2;
+    r.num.innerHTML="";r.num.appendChild(document.createTextNode(s.toFixed(dec)+(r.m.u==="seconds"?" s":"")));
+    var sm=h("small",cls,sel==="def"?"default":(Math.abs(diff)<1e-9?"no change":((diff>0?"+":"\u2212")+Math.abs(diff).toFixed(2)+(r.m.u==="seconds"?" s":"")+" vs. default")));r.num.appendChild(sm);
+  });
+}
+renderEx();
+
+/* ---------------- Tables ---------------- */
+var M6=["Moshi\u2020","Freeze-Omni\u2020","Qwen3-Omni + VAD","MiniCPM-o 4.5","DuplexOmni","AdaptDuplex"];
+function buildTable(id,groups){
+  var tb=document.getElementById(id);var th=document.createElement("thead");var tr=document.createElement("tr");
+  tr.appendChild(h("th","l","Task"));tr.appendChild(h("th","l","Metric"));
+  M6.forEach(function(m,i){tr.appendChild(h("th",i===5?"ours":null,m));});th.appendChild(tr);tb.appendChild(th);
+  var body=document.createElement("tbody");
+  groups.forEach(function(g){
+    g.rows.forEach(function(r,ri){
+      var row=document.createElement("tr");
+      row.appendChild(h("td","l"+(ri===0?"":""),ri===0?g.task:""));if(ri===0)row.firstChild.style.fontWeight="700";
+      row.appendChild(h("td","l",r[0]+(r[1]==null?"":(r[1]?" \u2191":" \u2193"))));
+      var vals=r[2];var nums=vals.map(function(v,i){return (typeof v==="number"&&!(r[3]&&r[3].indexOf(i)>=0))?v:null;});
+      var cand=nums.filter(function(v){return v!=null;});var best=r[1]==null?null:(r[1]?Math.max.apply(null,cand):Math.min.apply(null,cand));
+      vals.forEach(function(v,i){var txt=typeof v==="number"?v.toFixed(r[4]||2)+((r[3]&&r[3].indexOf(i)>=0)?"\u2021":""):v;var cls=[];if(i===5)cls.push("ours");if(typeof v!=="number")cls.push("na");if(best!=null&&nums[i]===best)cls.push("best");row.appendChild(h("td",cls.join(" "),txt));});
+      body.appendChild(row);
+    });
+  });
+  tb.appendChild(body);
+}
+buildTable("t1",[
+ {task:"Pause",rows:[["Synthetic TOR",0,[0.985,0.642,0.891,0.270,0.116,0.128],null,3],["Candor TOR",0,[0.980,0.481,0.935,0.463,0.097,0.299],null,3]]},
+ {task:"Backchannel",rows:[["TOR",0,[1.000,0.636,0.964,0.273,0.491,0.334],null,3],["Frequency",1,[0.001,0.001,0.026,0.020,0.034,0.040],null,3],["JSD",0,[0.957,0.997,0.871,0.902,0.847,0.821],null,3]]},
+ {task:"Smooth turn",rows:[["TOR",1,[0.941,0.336,0.992,0.882,0.193,0.982],null,3],["Response latency (s)",0,[0.265,0.953,8.454,1.222,0.000,0.085],[4],3]]},
+ {task:"Interruption",rows:[["TOR",1,[1.000,0.867,0.995,0.985,0.746,0.985],null,3],["GPT-4o score",1,[0.765,3.615,4.899,4.497,4.222,4.512],null,3],["Response latency (s)",0,[0.257,1.409,9.582,1.408,0.158,0.131],null,3]]}
+]);
+buildTable("t2",[
+ {task:"Interruption",rows:[["Behavior",1,[0.50,0.72,0.97,0.82,0.67,0.79]],["Stop latency (s)",0,[1.16,1.42,0.49,2.49,2.01,1.32]],["Response latency (s)",0,[1.47,1.35,10.28,1.86,0.36,0.34]]]},
+ {task:"Backchannel",rows:[["Behavior",1,[0.06,0.80,0.00,0.46,0.28,0.55]],["Stop latency (s)",1,[0.42,0.66,"\u2013",0.76,0.80,0.84]],["Response latency (s)",0,[3.00,2.16,4.37,2.34,0.82,0.43]]]},
+ {task:"Talking to others",rows:[["Behavior",1,[0.20,0.25,0.00,0.21,0.37,0.35]],["Stop latency (s)",1,[0.87,1.39,0.14,1.71,1.87,1.89]],["Response latency (s)",0,[2.38,1.32,6.16,1.85,1.95,0.33]]]},
+ {task:"Background speech",rows:[["Behavior",1,[0.08,0.26,0.00,0.37,0.07,0.43]],["Stop latency (s)",1,[0.54,0.98,0.20,1.46,1.50,1.51]],["Response latency (s)",0,[1.62,1.60,6.56,1.61,0.74,0.36]]]}
+]);
+buildTable("t3",[
+ {task:"Interruption (%)",rows:[["ZH",1,["NR","NR",93.2,81.8,56.4,90.4],null,1],["EN",1,["NR","NR",84.6,63.0,55.2,74.4],null,1],["ALL",1,[35.4,29.6,88.8,72.4,55.8,82.2],null,1]]},
+ {task:"Rejection (%)",rows:[["ZH",1,["NR","NR",36.5,44.4,40.0,51.8],null,1],["EN",1,["NR","NR",38.5,49.6,47.8,46.1],null,1],["ALL",1,[22.8,50.2,37.6,47.2,44.1,49.1],null,1]]},
+ {task:"Delay (s)",rows:[["ZH",0,["NR","NR",8.514,2.074,4.266,0.835],null,3],["EN",0,["NR","NR",9.536,2.315,4.590,1.345],null,3],["ALL",0,[2.876,2.578,9.032,2.203,4.459,1.042],null,3]]},
+ {task:"Score",rows:[["D-Score, ALL",1,[56.3,59.5,23.7,64.0,43.8,85.4],null,1],["Final, ALL",1,[34.5,43.8,55.3,60.6,48.7,69.6],null,1]]}
+]);
+var tabs=[].slice.call(document.querySelectorAll('[role="tab"]'));
+function selectTab(tab){tabs.forEach(function(x){var on=x===tab;x.setAttribute("aria-selected",on?"true":"false");x.tabIndex=on?0:-1;document.getElementById(x.getAttribute("aria-controls")).hidden=!on;});}
+tabs.forEach(function(tab,i){tab.addEventListener("click",function(){selectTab(tab);});tab.addEventListener("keydown",function(e){var j=null;if(e.key==="ArrowRight")j=(i+1)%tabs.length;if(e.key==="ArrowLeft")j=(i-1+tabs.length)%tabs.length;if(j!=null){e.preventDefault();selectTab(tabs[j]);tabs[j].focus();}});});
+
+/* ---------------- Copy BibTeX ---------------- */
+var cb=document.getElementById("copyBib");
+cb.addEventListener("click",function(){var txt=document.getElementById("bibtex").textContent;
+  function done(ok){cb.textContent=ok?"Copied":"Select and copy";setTimeout(function(){cb.textContent="Copy";},1800);}
+  try{navigator.clipboard.writeText(txt).then(function(){done(true);},function(){done(false);});}catch(e){done(false);}
+});
+})();
+</script>
 </body>
 </html>
